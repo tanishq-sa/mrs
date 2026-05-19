@@ -1,0 +1,36 @@
+services:
+  - type: web
+    name: lrms-app
+    env: docker
+    plan: free
+    envVars:
+      - key: PORT
+        value: "8080"
+      - key: DB_HOST
+        fromDatabase:
+          name: lrms-db
+          property: host
+      - key: DB_PORT
+        fromDatabase:
+          name: lrms-db
+          property: port
+      - key: DB_NAME
+        fromDatabase:
+          name: lrms-db
+          property: database
+      - key: DB_USER
+        fromDatabase:
+          name: lrms-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: lrms-db
+          property: password
+      - key: JWT_SECRET
+        generateValue: true
+
+databases:
+  - name: lrms-db
+    plan: free
+    databaseName: lrms
+    user: lrms_user
