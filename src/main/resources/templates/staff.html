@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head}"></head>
+<body class="bg-light">
+
+<div class="d-flex">
+    <div th:replace="~{fragments :: sidebar}"></div>
+    
+    <div class="flex-grow-1">
+        
+        <div class="container-fluid p-4">
+            <div class="d-flex justify-content-between mb-4">
+                <h3>Staff Management</h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addStaffModal">Add New Staff</button>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Role</th>
+                                <th>Status</th>
+                                <th>Created</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="staffTableBody">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Staff Modal -->
+<div class="modal fade" id="addStaffModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Staff</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addStaffForm">
+                    <div class="mb-3">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="staffName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="staffEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" id="staffPassword" required minlength="6">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Role</label>
+                        <select class="form-select" id="staffRole" required>
+                            <option value="ADMIN">Admin</option>
+                            <option value="MANAGER">Manager</option>
+                            <option value="FRONT_DESK" selected>Front Desk</option>
+                            <option value="RESTAURANT_STAFF">Restaurant Staff</option>
+                            <option value="HOUSEKEEPING">Housekeeping</option>
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Create Staff</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Role Modal -->
+<div class="modal fade" id="editRoleModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Change Role</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="editStaffId">
+                <div class="mb-3">
+                    <label class="form-label">New Role</label>
+                    <select class="form-select" id="editRoleSelect">
+                        <option value="ADMIN">Admin</option>
+                        <option value="MANAGER">Manager</option>
+                        <option value="FRONT_DESK">Front Desk</option>
+                        <option value="RESTAURANT_STAFF">Restaurant Staff</option>
+                        <option value="HOUSEKEEPING">Housekeeping</option>
+                    </select>
+                </div>
+                <button class="btn btn-primary w-100" onclick="saveRole()">Save</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+<script>
+
+    async function loadStaff() {
+        const res = await fetch('/api/admin/staff');
+        const staff = await res.json();
+        const tbody = document.getElementById('staffTableBody');
+        tbody.innerHTML = staff.map(s => {
+            const roleClass = {
+                'ADMIN': 'bg-danger', 'MANAGER': 'bg-primary',
+                'FRONT_DESK': 'bg-info', 'RESTAURANT_STAFF': 'bg-warning text-dark',
+                'HOUSEKEEPING': 'bg-secondary'
+            }[s.role] || 'bg-secondary';
+
+            return `
+            <tr class="${s.isActive === false ? 'table-secondary' : ''}">
+                <td>${s.staffId}</td>
+                <td>${s.fullName}</td>
+                <td>${s.email}</td>
+                <td><span class="badge ${roleClass}">${s.role}</span></td>
+                <td>
+                    <span class="badge ${s.isActive !== false ? 'bg-success' : 'bg-danger'}">
+                        ${s.isActive !== false ? 'Active' : 'Inactive'}
+                    </span>
+                </td>
+                <td>${s.createdAt ? new Date(s.createdAt).toLocaleDateString() : '-'}</td>
+                <td>
+                    <button class="btn btn-sm btn-outline-primary" onclick="openEditRole(${s.staffId}, '${s.role}')">Change Role</button>
+                    <button class="btn btn-sm ${s.isActive !== false ? 'btn-outline-danger' : 'btn-outline-success'}" onclick="toggleActive(${s.staffId})">
+                        ${s.isActive !== false ? 'Deactivate' : 'Activate'}
+                    </button>
+                </td>
+            </tr>`;
+        }).join('');
+    }
+
+    document.getElementById('addStaffForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            fullName: document.getElementById('staffName').value,
+            email: document.getElementById('staffEmail').value,
+            password: document.getElementById('staffPassword').value,
+            role: document.getElementById('staffRole').value
+        };
+        const res = await fetch('/api/admin/staff', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('addStaffModal')).hide();
+            document.getElementById('addStaffForm').reset();
+            loadStaff();
+        } else {
+            const err = await res.json().catch(() => ({}));
+            alert('Failed to create staff: ' + (err.message || res.statusText));
+        }
+    });
+
+    function openEditRole(id, currentRole) {
+        document.getElementById('editStaffId').value = id;
+        document.getElementById('editRoleSelect').value = currentRole;
+        new bootstrap.Modal(document.getElementById('editRoleModal')).show();
+    }
+
+    async function saveRole() {
+        const id = document.getElementById('editStaffId').value;
+        const role = document.getElementById('editRoleSelect').value;
+        await fetch(`/api/admin/staff/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ role })
+        });
+        bootstrap.Modal.getInstance(document.getElementById('editRoleModal')).hide();
+        loadStaff();
+    }
+
+    async function toggleActive(id) {
+        await fetch(`/api/admin/staff/${id}/toggle`, { method: 'PATCH' });
+        loadStaff();
+    }
+
+    loadStaff();
+</script>
+</body>
+</html>

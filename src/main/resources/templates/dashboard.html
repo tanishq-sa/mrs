@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head}"></head>
+<body class="bg-light">
+
+<div class="d-flex">
+    <div th:replace="~{fragments :: sidebar}"></div>
+    
+    <div class="flex-grow-1">
+        
+        <div class="container-fluid p-4">
+            <div class="row">
+                <div class="col-md-3 mb-4">
+                    <div class="card text-center shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted">Available Rooms</h5>
+                            <h2 class="display-4" id="statRooms">-</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="card text-center shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted">Today's Bookings</h5>
+                            <h2 class="display-4" id="statBookings">-</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="card text-center shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted">Active Orders</h5>
+                            <h2 class="display-4" id="statOrders">-</h2>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-4">
+                    <div class="card text-center shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted">Pending Tasks</h5>
+                            <h2 class="display-4" id="statTasks">-</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+<script>
+
+    async function loadStats() {
+        try {
+            const res = await fetch('/api/admin/stats');
+            if (res.ok) {
+                const stats = await res.json();
+                document.getElementById('statRooms').textContent = stats.availableRooms;
+                document.getElementById('statBookings').textContent = stats.todayBookings;
+                document.getElementById('statOrders').textContent = stats.activeOrders;
+                document.getElementById('statTasks').textContent = stats.pendingTasks;
+            }
+        } catch (err) {
+            console.error('Failed to load stats');
+        }
+    }
+
+    loadStats();
+    // Refresh stats every 30 seconds
+    setInterval(loadStats, 30000);
+</script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments :: head}"></head>
+
+<body class="bg-light">
+
+    <div class="d-flex">
+        <div th:replace="~{fragments :: sidebar}"></div>
+
+        <div class="flex-grow-1">
+
+            <div class="container-fluid p-4">
+                <div class="d-flex justify-content-between mb-4">
+                    <h3>Housekeeping</h3>
+                    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addTaskModal">New
+                        Task</button>
+                </div>
+
+                <div class="card shadow-sm">
+                    <div class="card-body">
+                        <table class="table table-bordered table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>ID</th>
+                                    <th>Location</th>
+                                    <th>Type</th>
+                                    <th>Assigned To</th>
+                                    <th>Priority</th>
+                                    <th>Status</th>
+                                    <th>Notes</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasksTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal fade" id="addTaskModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5>Add Task</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addTaskForm">
+                        <div class="mb-3"><label class="form-label">Location Type</label>
+                            <select class="form-select" id="taskLocationType" onchange="toggleLocationSelect()">
+                                <option value="ROOM">Room</option>
+                                <option value="TABLE">Restaurant Table</option>
+                            </select>
+                        </div>
+                        <div class="mb-3" id="roomSelectDiv"><label class="form-label">Room</label><select
+                                class="form-select" id="taskRoomId"></select></div>
+                        <div class="mb-3 d-none" id="tableSelectDiv"><label class="form-label">Table</label><select
+                                class="form-select" id="taskTableId"></select></div>
+                        <div class="mb-3"><label class="form-label">Type</label>
+                            <select class="form-select" id="taskType">
+                                <option value="CLEANING">Cleaning</option>
+                                <option value="MAINTENANCE">Maintenance</option>
+                                <option value="INSPECTION">Inspection</option>
+                            </select>
+                        </div>
+                        <div class="mb-3"><label class="form-label">Priority</label>
+                            <select class="form-select" id="taskPriority">
+                                <option value="NORMAL">Normal</option>
+                                <option value="HIGH">High</option>
+                                <option value="URGENT">Urgent</option>
+                            </select>
+                        </div>
+                        <div class="mb-3"><label class="form-label">Assign To</label><select class="form-select"
+                                id="taskStaffId"></select></div>
+                        <button type="submit" class="btn btn-primary w-100">Create Task</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="~{fragments :: scripts}"></div>
+    <script>
+
+        function toggleLocationSelect() {
+            const type = document.getElementById('taskLocationType').value;
+            document.getElementById('roomSelectDiv').classList.toggle('d-none', type !== 'ROOM');
+            document.getElementById('tableSelectDiv').classList.toggle('d-none', type !== 'TABLE');
+        }
+
+        function getStatusBadge(status) {
+            const colors = { PENDING: 'bg-warning text-dark', IN_PROGRESS: 'bg-info', COMPLETED: 'bg-success', APPROVED: 'bg-primary' };
+            return `<span class="badge ${colors[status] || 'bg-secondary'}">${status}</span>`;
+        }
+
+        function getPriorityBadge(priority) {
+            const colors = { NORMAL: 'bg-secondary', HIGH: 'bg-warning text-dark', URGENT: 'bg-danger' };
+            return `<span class="badge ${colors[priority] || 'bg-secondary'}">${priority}</span>`;
+        }
+
+        function getLocation(t) {
+            if (t.room) return `Room ${t.room.roomNumber}`;
+            if (t.restaurantTable) return `Table ${t.restaurantTable.tableNumber}`;
+            return 'N/A';
+        }
+
+        async function loadData() {
+            const [tasksRes, roomsRes, staffRes, tablesRes] = await Promise.all([
+                fetch('/api/admin/housekeeping'), fetch('/api/rooms'), fetch('/api/admin/staff'), fetch('/api/tables')
+            ]);
+            const tasks = await tasksRes.json();
+            const rooms = await roomsRes.json();
+            const staff = await staffRes.json();
+            const tables = await tablesRes.json();
+
+            document.getElementById('tasksTableBody').innerHTML = tasks.map(t => `
+            <tr>
+                <td>${t.taskId}</td>
+                <td>${getLocation(t)}</td>
+                <td>${t.taskType}</td>
+                <td>${t.assignedTo ? t.assignedTo.fullName : '<span class="text-muted">Unassigned</span>'}</td>
+                <td>${getPriorityBadge(t.priority)}</td>
+                <td>${getStatusBadge(t.status)}</td>
+                <td><small class="text-muted">${t.notes || ''}</small></td>
+                <td>
+                    ${t.status === 'PENDING' ? `<button class="btn btn-sm btn-outline-info" onclick="updateTaskStatus(${t.taskId}, 'IN_PROGRESS')">Start</button>` : ''}
+                    ${t.status === 'IN_PROGRESS' ? `<button class="btn btn-sm btn-outline-success" onclick="updateTaskStatus(${t.taskId}, 'COMPLETED')">Done</button>` : ''}
+                    ${t.status === 'PENDING' ? `<button class="btn btn-sm btn-outline-success" onclick="updateTaskStatus(${t.taskId}, 'COMPLETED')">Done</button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+
+            document.getElementById('taskRoomId').innerHTML = rooms.map(r => `<option value="${r.roomId}">${r.roomNumber} (Floor ${r.floor})</option>`).join('');
+            document.getElementById('taskTableId').innerHTML = tables.map(t => `<option value="${t.tableId}">${t.tableNumber} - ${t.section} (Cap: ${t.capacity})</option>`).join('');
+            document.getElementById('taskStaffId').innerHTML = staff.map(s => `<option value="${s.staffId}">${s.fullName} (${s.role})</option>`).join('');
+        }
+
+        async function updateTaskStatus(id, status) {
+            await fetch(`/api/admin/housekeeping/${id}/status`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ status })
+            });
+            loadData();
+        }
+
+        document.getElementById('addTaskForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const locationType = document.getElementById('taskLocationType').value;
+            const data = {
+                taskType: document.getElementById('taskType').value,
+                priority: document.getElementById('taskPriority').value,
+                assignedTo: { staffId: document.getElementById('taskStaffId').value },
+                status: 'PENDING'
+            };
+            if (locationType === 'ROOM') {
+                data.room = { roomId: document.getElementById('taskRoomId').value };
+            } else {
+                data.restaurantTable = { tableId: document.getElementById('taskTableId').value };
+            }
+            await fetch('/api/admin/housekeeping', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            bootstrap.Modal.getInstance(document.getElementById('addTaskModal')).hide();
+            loadData();
+        });
+
+        loadData();
+    </script>
+</body>
+
+</html>

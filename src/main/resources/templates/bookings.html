@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head}"></head>
+<body class="bg-light">
+
+<div class="d-flex">
+    <div th:replace="~{fragments :: sidebar}"></div>
+    
+    <div class="flex-grow-1">
+        
+        <div class="container-fluid p-4">
+            <div class="d-flex justify-content-between mb-4">
+                <h3>Bookings</h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newBookingModal">New Booking</button>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Guest</th>
+                                <th>Room</th>
+                                <th>Dates</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingsTableBody">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Booking Modal -->
+<div class="modal fade" id="newBookingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">New Booking</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="newBookingForm">
+                    <div class="mb-3">
+                        <label class="form-label">Guest</label>
+                        <select class="form-select" id="bookingGuestId" required>
+                            <!-- Loaded via JS -->
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Room</label>
+                        <select class="form-select" id="bookingRoomId" required>
+                            <!-- Loaded via JS -->
+                        </select>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Check-In</label>
+                            <input type="date" class="form-control" id="checkInDate" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Check-Out</label>
+                            <input type="date" class="form-control" id="checkOutDate" required>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Adults</label>
+                            <input type="number" class="form-control" id="adults" value="1" min="1" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Children</label>
+                            <input type="number" class="form-control" id="children" value="0" min="0">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100">Create Booking</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+<script>
+
+    async function loadData() {
+        const [bookingsRes, guestsRes, roomsRes] = await Promise.all([
+            fetch('/api/bookings'),
+            fetch('/api/guests'),
+            fetch('/api/rooms')
+        ]);
+
+        const bookings = await bookingsRes.json();
+        const guests = await guestsRes.json();
+        const rooms = await roomsRes.json();
+
+        // Load Table
+        const tbody = document.getElementById('bookingsTableBody');
+        tbody.innerHTML = '';
+        bookings.forEach(b => {
+            const statusClass = b.status === 'CHECKED_IN' ? 'bg-primary' : 
+                              b.status === 'CHECKED_OUT' ? 'bg-secondary' : 
+                              b.status === 'CANCELLED' ? 'bg-danger' : 'bg-success';
+            
+            let actions = '';
+            if (b.status === 'PENDING' || b.status === 'CONFIRMED') {
+                actions = `
+                    <button class="btn btn-sm btn-success" onclick="checkIn(${b.bookingId})">Check-In</button>
+                    <button class="btn btn-sm btn-danger" onclick="cancelBooking(${b.bookingId})">Cancel</button>
+                `;
+            } else if (b.status === 'CHECKED_IN') {
+                actions = `<button class="btn btn-sm btn-warning" onclick="checkOut(${b.bookingId})">Check-Out</button>`;
+            }
+
+            tbody.innerHTML += `
+                <tr>
+                    <td>${b.bookingId}</td>
+                    <td>${b.guest.fullName}</td>
+                    <td>${b.room.roomNumber} (${b.room.roomType.typeName})</td>
+                    <td>${b.checkInDate} to ${b.checkOutDate}</td>
+                    <td><span class="badge ${statusClass}">${b.status}</span></td>
+                    <td>${actions}</td>
+                </tr>
+            `;
+        });
+
+        // Load Selects
+        const guestSelect = document.getElementById('bookingGuestId');
+        guestSelect.innerHTML = guests.map(g => `<option value="${g.guestId}">${g.fullName}</option>`).join('');
+        
+        const roomSelect = document.getElementById('bookingRoomId');
+        roomSelect.innerHTML = rooms.map(r => `<option value="${r.roomId}">${r.roomNumber} - ${r.roomType.typeName}</option>`).join('');
+    }
+
+    async function checkIn(id) {
+        await fetch(`/api/bookings/${id}/checkin`, { method: 'POST' });
+        loadData();
+    }
+
+    async function checkOut(id) {
+        await fetch(`/api/bookings/${id}/checkout`, { method: 'POST' });
+        loadData();
+    }
+
+    async function cancelBooking(id) {
+        await fetch(`/api/bookings/${id}/cancel`, { method: 'PATCH' });
+        loadData();
+    }
+
+    document.getElementById('newBookingForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            guest: { guestId: document.getElementById('bookingGuestId').value },
+            room: { roomId: document.getElementById('bookingRoomId').value },
+            checkInDate: document.getElementById('checkInDate').value,
+            checkOutDate: document.getElementById('checkOutDate').value,
+            adults: document.getElementById('adults').value,
+            children: document.getElementById('children').value,
+            status: 'CONFIRMED'
+        };
+        const res = await fetch('/api/bookings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        if (res.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('newBookingModal')).hide();
+            loadData();
+        } else {
+            const err = await res.json();
+            alert(err.message || 'Failed to create booking');
+        }
+    });
+
+    loadData();
+</script>
+</body>
+</html>

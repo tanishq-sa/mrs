@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head}"></head>
+<body class="bg-light">
+
+<div class="d-flex">
+    <div th:replace="~{fragments :: sidebar}"></div>
+    
+    <div class="flex-grow-1">
+        <div class="container-fluid p-4">
+            <ul class="nav nav-tabs mb-4" id="restaurantTabs">
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#ordersTab">Orders</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#menuTab">Menu</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tablesTab">Tables</button></li>
+            </ul>
+
+            <div class="tab-content">
+                <!-- Orders Tab -->
+                <div class="tab-pane fade show active" id="ordersTab">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h4>Recent Orders</h4>
+                        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#newOrderModal">New Order</button>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <table class="table table-bordered table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Type</th>
+                                        <th>Table/Room</th>
+                                        <th>Customer</th>
+                                        <th>Amount</th>
+                                        <th>Status</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ordersTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Menu Tab -->
+                <div class="tab-pane fade" id="menuTab">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h4>Menu Items</h4>
+                    </div>
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <table class="table table-bordered table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Name</th>
+                                        <th>Category</th>
+                                        <th>Price</th>
+                                        <th>Veg</th>
+                                        <th>Available</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="menuTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tables Tab -->
+                <div class="tab-pane fade" id="tablesTab">
+                    <div class="d-flex justify-content-between mb-3">
+                        <h4>Restaurant Tables</h4>
+                    </div>
+                    <div class="row" id="tablesGrid"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- New Order Modal -->
+<div class="modal fade" id="newOrderModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header"><h5>New Order</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <form id="newOrderForm">
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Type</label>
+                            <select class="form-select" id="orderType" onchange="toggleOrderTypeInputs()">
+                                <option value="DINE_IN">Dine-In</option>
+                                <option value="ROOM_SERVICE">Room Service</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3" id="tableSelectDiv">
+                            <label class="form-label">Table</label>
+                            <select class="form-select" id="orderTableId"></select>
+                        </div>
+                        <!-- Dine-in: Customer Name & Phone -->
+                        <div class="col-md-4 mb-3" id="customerNameDiv">
+                            <label class="form-label">Customer Name</label>
+                            <input type="text" class="form-control" id="customerName" placeholder="Enter name" required>
+                        </div>
+                    </div>
+                    <div class="row" id="customerPhoneRow">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Customer Phone</label>
+                            <input type="text" class="form-control" id="customerPhone" placeholder="Enter phone" required>
+                        </div>
+                    </div>
+                    <!-- Room Service: Active Booking -->
+                    <div class="row d-none" id="bookingSelectRow">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Active Booking (Checked-In)</label>
+                            <select class="form-select" id="orderBookingId"></select>
+                        </div>
+                    </div>
+                    <hr>
+                    <h6>Items</h6>
+                    <div id="orderItemsList"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary mt-2" onclick="addOrderItemRow()">+ Add Item</button>
+                    <button type="submit" class="btn btn-primary w-100 mt-4">Place Order</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Item to Existing Order Modal -->
+<div class="modal fade" id="addItemModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header"><h5>Add Item to Order</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <input type="hidden" id="addItemOrderId">
+                <div class="mb-3">
+                    <label class="form-label">Menu Item</label>
+                    <select class="form-select" id="addItemSelect"></select>
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Quantity</label>
+                    <input type="number" class="form-control" id="addItemQty" value="1" min="1">
+                </div>
+                <button class="btn btn-primary w-100" onclick="submitAddItem()">Add Item</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+<script>
+    let menuItems = [];
+
+    async function loadAll() {
+        const [ordersRes, menuRes, tablesRes, bookingsRes] = await Promise.all([
+            fetch('/api/orders'), fetch('/api/menu/items'), fetch('/api/tables'), fetch('/api/bookings')
+        ]);
+        const orders = await ordersRes.json();
+        menuItems = await menuRes.json();
+        const tables = await tablesRes.json();
+        const bookings = await bookingsRes.json();
+
+        // Orders Table
+        const oBody = document.getElementById('ordersTableBody');
+        oBody.innerHTML = orders.map(o => `
+            <tr>
+                <td>${o.orderId}</td>
+                <td>${o.orderType}</td>
+                <td>${o.table ? 'Table ' + o.table.tableNumber : (o.booking ? 'Room ' + o.booking.room.roomNumber : 'N/A')}</td>
+                <td>${o.customerName ? o.customerName : (o.guest ? o.guest.fullName : '-')}</td>
+                <td>₹${o.totalAmount}</td>
+                <td><span class="badge bg-info">${o.status}</span></td>
+                <td>
+                    ${o.status === 'PLACED' ? `<button class="btn btn-sm btn-outline-primary me-1" onclick="openAddItemModal(${o.orderId})">+ Item</button>` : ''}
+                    ${o.status === 'PLACED' ? `<button class="btn btn-sm btn-warning" onclick="updateOrderStatus(${o.orderId}, 'PREPARING')">Prepare</button>` : ''}
+                    ${o.status === 'PREPARING' ? `<button class="btn btn-sm btn-success" onclick="updateOrderStatus(${o.orderId}, 'READY')">Ready</button>` : ''}
+                    ${o.status === 'READY' ? `<button class="btn btn-sm btn-primary" onclick="updateOrderStatus(${o.orderId}, 'SERVED')">Served</button>` : ''}
+                    ${o.status !== 'SERVED' && o.status !== 'CANCELLED' ? `<button class="btn btn-sm btn-danger" onclick="updateOrderStatus(${o.orderId}, 'CANCELLED')">Cancel</button>` : ''}
+                </td>
+            </tr>
+        `).join('');
+
+        // Menu Table
+        document.getElementById('menuTableBody').innerHTML = menuItems.map(m => `
+            <tr>
+                <td>${m.itemName}</td>
+                <td>${m.categoryName}</td>
+                <td>₹${m.price}</td>
+                <td>${m.isVeg ? '🟢' : '🔴'}</td>
+                <td>${m.isAvailable ? 'Yes' : 'No'}</td>
+                <td><button class="btn btn-sm btn-outline-secondary" onclick="toggleMenu(${m.itemId})">Toggle</button></td>
+            </tr>
+        `).join('');
+
+        // Tables Grid
+        document.getElementById('tablesGrid').innerHTML = tables.map(t => `
+            <div class="col-md-2 mb-3">
+                <div class="card text-center ${t.status === 'AVAILABLE' ? 'border-success' : 'border-danger'}">
+                    <div class="card-body">
+                        <h5>${t.tableNumber}</h5>
+                        <small class="text-muted">Cap: ${t.capacity}</small><br>
+                        <span class="badge ${t.status === 'AVAILABLE' ? 'bg-success' : 'bg-danger'}">${t.status}</span>
+                    </div>
+                </div>
+            </div>
+        `).join('');
+
+        // Populate Selects
+        document.getElementById('orderTableId').innerHTML = tables.filter(t => t.status === 'AVAILABLE').map(t => `<option value="${t.tableId}">${t.tableNumber}</option>`).join('');
+        document.getElementById('orderBookingId').innerHTML = bookings.filter(b => b.status === 'CHECKED_IN').map(b => `<option value="${b.bookingId}">Room ${b.room.roomNumber} - ${b.guest.fullName}</option>`).join('');
+    }
+
+    function toggleOrderTypeInputs() {
+        const type = document.getElementById('orderType').value;
+        if (type === 'DINE_IN') {
+            document.getElementById('tableSelectDiv').classList.remove('d-none');
+            document.getElementById('customerNameDiv').classList.remove('d-none');
+            document.getElementById('customerPhoneRow').classList.remove('d-none');
+            document.getElementById('bookingSelectRow').classList.add('d-none');
+        } else {
+            document.getElementById('tableSelectDiv').classList.add('d-none');
+            document.getElementById('customerNameDiv').classList.add('d-none');
+            document.getElementById('customerPhoneRow').classList.add('d-none');
+            document.getElementById('bookingSelectRow').classList.remove('d-none');
+        }
+    }
+
+    function addOrderItemRow() {
+        const div = document.createElement('div');
+        div.className = 'row mb-2';
+        div.innerHTML = `
+            <div class="col-md-7"><select class="form-select item-select" required><option value="">Select Item</option>${menuItems.filter(m => m.isAvailable).map(m => `<option value="${m.itemId}" data-price="${m.price}">${m.itemName} (₹${m.price})</option>`).join('')}</select></div>
+            <div class="col-md-3"><input type="number" class="form-control item-qty" value="1" min="1" required></div>
+            <div class="col-md-2"><button type="button" class="btn btn-danger btn-sm" onclick="this.parentElement.parentElement.remove()">X</button></div>
+        `;
+        document.getElementById('orderItemsList').appendChild(div);
+    }
+
+    document.getElementById('newOrderForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const type = document.getElementById('orderType').value;
+        const items = Array.from(document.querySelectorAll('#orderItemsList .row')).map(row => {
+            const select = row.querySelector('.item-select');
+            if (!select.value) return null;
+            return { menuItem: { itemId: select.value }, quantity: parseInt(row.querySelector('.item-qty').value), unitPrice: parseFloat(select.options[select.selectedIndex].dataset.price) };
+        }).filter(i => i !== null);
+
+        const data = {
+            orderType: type,
+            table: type === 'DINE_IN' ? { tableId: document.getElementById('orderTableId').value } : null,
+            customerName: type === 'DINE_IN' ? document.getElementById('customerName').value : null,
+            customerPhone: type === 'DINE_IN' ? document.getElementById('customerPhone').value : null,
+            booking: type === 'ROOM_SERVICE' ? { bookingId: document.getElementById('orderBookingId').value } : null,
+            items: items, status: 'PLACED'
+        };
+
+        const res = await fetch('/api/orders', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+        if (res.ok) { bootstrap.Modal.getInstance(document.getElementById('newOrderModal')).hide(); document.getElementById('newOrderForm').reset(); document.getElementById('orderItemsList').innerHTML = ''; loadAll(); }
+    });
+
+    // Add Item to existing PLACED order
+    function openAddItemModal(orderId) {
+        document.getElementById('addItemOrderId').value = orderId;
+        document.getElementById('addItemSelect').innerHTML = menuItems.filter(m => m.isAvailable).map(m => `<option value="${m.itemId}" data-price="${m.price}">${m.itemName} (₹${m.price})</option>`).join('');
+        new bootstrap.Modal(document.getElementById('addItemModal')).show();
+    }
+
+    async function submitAddItem() {
+        const orderId = document.getElementById('addItemOrderId').value;
+        const select = document.getElementById('addItemSelect');
+        const qty = parseInt(document.getElementById('addItemQty').value);
+        const price = parseFloat(select.options[select.selectedIndex].dataset.price);
+
+        const res = await fetch(`/api/orders/${orderId}/items`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ menuItem: { itemId: select.value }, quantity: qty, unitPrice: price })
+        });
+        if (res.ok) {
+            bootstrap.Modal.getInstance(document.getElementById('addItemModal')).hide();
+            loadAll();
+        }
+    }
+
+    async function updateOrderStatus(id, status) {
+        await fetch(`/api/orders/${id}/status`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ status }) });
+        loadAll();
+    }
+
+    async function toggleMenu(id) { await fetch(`/api/menu/items/${id}/toggle`, { method: 'PATCH' }); loadAll(); }
+
+    loadAll();
+</script>
+</body>
+</html>

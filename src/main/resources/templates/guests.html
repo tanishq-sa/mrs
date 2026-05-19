@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head}"></head>
+<body class="bg-light">
+
+<div class="d-flex">
+    <div th:replace="~{fragments :: sidebar}"></div>
+    
+    <div class="flex-grow-1">
+        
+        <div class="container-fluid p-4">
+            <div class="d-flex justify-content-between mb-4">
+                <h3>Guest Management</h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addGuestModal">Add New Guest</button>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Phone</th>
+                                <th>ID Proof</th>
+                                <th>VIP</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="guestsTableBody">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Guest Modal -->
+<div class="modal fade" id="addGuestModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Guest</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addGuestForm">
+                    <div class="mb-3">
+                        <label class="form-label">Full Name</label>
+                        <input type="text" class="form-control" id="fullName" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Email</label>
+                        <input type="email" class="form-control" id="guestEmail" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Phone</label>
+                        <input type="text" class="form-control" id="phone" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">ID Type</label>
+                            <select class="form-select" id="idProofType" required>
+                                <option value="Aadhaar">Aadhaar</option>
+                                <option value="Passport">Passport</option>
+                                <option value="DL">Driving License</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">ID Number</label>
+                            <input type="text" class="form-control" id="idProofNumber" required>
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input" id="isVip">
+                        <label class="form-check-label" for="isVip">VIP Guest</label>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Guest</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+<script>
+
+    async function loadGuests() {
+        const res = await fetch('/api/guests');
+        const guests = await res.json();
+        const tbody = document.getElementById('guestsTableBody');
+        tbody.innerHTML = '';
+        guests.forEach(guest => {
+            tbody.innerHTML += `
+                <tr>
+                    <td>${guest.fullName}</td>
+                    <td>${guest.email}</td>
+                    <td>${guest.phone}</td>
+                    <td>${guest.idProofType}: ${guest.idProofNumber}</td>
+                    <td>${guest.isVip ? '<span class="badge bg-warning">VIP</span>' : 'No'}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary">History</button>
+                    </td>
+                </tr>
+            `;
+        });
+    }
+
+    document.getElementById('addGuestForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            fullName: document.getElementById('fullName').value,
+            email: document.getElementById('guestEmail').value,
+            phone: document.getElementById('phone').value,
+            idProofType: document.getElementById('idProofType').value,
+            idProofNumber: document.getElementById('idProofNumber').value,
+            isVip: document.getElementById('isVip').checked
+        };
+        await fetch('/api/guests', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        bootstrap.Modal.getInstance(document.getElementById('addGuestModal')).hide();
+        loadGuests();
+    });
+
+    loadGuests();
+</script>
+</body>
+</html>

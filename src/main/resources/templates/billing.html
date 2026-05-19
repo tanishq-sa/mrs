@@ -1,0 +1,381 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+
+<head th:replace="~{fragments :: head}"></head>
+
+<body class="bg-light">
+
+    <!-- Print-only styles: hide admin UI, show only the invoice -->
+    <style>
+        @media print {
+            body { background: #fff !important; }
+            .sidebar, .topbar, .no-print, #billsListSection, #generateBillModal { display: none !important; }
+            #billDetailSection { display: block !important; margin: 0 !important; padding: 0 !important; }
+            .invoice-wrapper { box-shadow: none !important; border: none !important; margin: 0 !important; max-width: 100% !important; }
+        }
+        .invoice-wrapper {
+            max-width: 800px;
+            margin: 20px auto;
+            background: #fff;
+            border: 1px solid #dee2e6;
+            padding: 40px;
+        }
+        .invoice-header { border-bottom: 2px solid #333; padding-bottom: 15px; margin-bottom: 20px; }
+        .invoice-title { font-size: 28px; font-weight: 700; letter-spacing: 1px; }
+        .invoice-subtitle { color: #666; font-size: 13px; }
+        .invoice-meta td { padding: 2px 8px 2px 0; font-size: 14px; }
+        .invoice-meta .label { font-weight: 600; color: #333; }
+        .invoice-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+        .invoice-table th { background: #f8f9fa; border: 1px solid #dee2e6; padding: 8px 10px; font-size: 13px; text-align: left; }
+        .invoice-table td { border: 1px solid #dee2e6; padding: 7px 10px; font-size: 13px; }
+        .invoice-table .text-right { text-align: right; }
+        .invoice-summary { width: 300px; margin-left: auto; }
+        .invoice-summary td { padding: 5px 10px; font-size: 14px; }
+        .invoice-summary .total-row td { border-top: 2px solid #333; font-weight: 700; font-size: 16px; }
+        .invoice-section-title { font-size: 14px; font-weight: 600; margin: 18px 0 8px 0; color: #333; border-bottom: 1px solid #eee; padding-bottom: 4px; }
+        .invoice-footer { border-top: 1px solid #dee2e6; padding-top: 15px; margin-top: 25px; text-align: center; color: #999; font-size: 12px; }
+        .status-paid { color: #198754; font-weight: 600; }
+        .status-pending { color: #dc3545; font-weight: 600; }
+    </style>
+
+    <div class="d-flex">
+        <div th:replace="~{fragments :: sidebar}"></div>
+
+        <div class="flex-grow-1">
+
+            <div class="container-fluid p-4">
+
+                <!-- Bills List (admin table) -->
+                <div id="billsListSection">
+                    <div class="d-flex justify-content-between align-items-center mb-3 no-print">
+                        <h3>Billing</h3>
+                        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#generateBillModal">Generate Bill</button>
+                    </div>
+
+                    <div class="card shadow-sm no-print">
+                        <div class="card-body">
+                            <table class="table table-bordered table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>Guest</th>
+                                        <th>Type</th>
+                                        <th>Subtotal</th>
+                                        <th>GST</th>
+                                        <th>Total</th>
+                                        <th>Status</th>
+                                        <th>Date</th>
+                                        <th>Action</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="billsTableBody"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoice Detail (real bill format, hidden by default) -->
+                <div id="billDetailSection" style="display:none;">
+                    <div class="mb-3 no-print">
+                        <button class="btn btn-outline-secondary btn-sm me-2" onclick="window.print()">🖨️ Print Bill</button>
+                        <button class="btn btn-outline-dark btn-sm" onclick="closeBillDetail()">← Back to List</button>
+                    </div>
+
+                    <div class="invoice-wrapper" id="invoiceContent">
+                        <!-- Header -->
+                        <div class="invoice-header">
+                            <div class="row">
+                                <div class="col-7">
+                                    <div class="invoice-title">LRMS</div>
+                                    <div class="invoice-subtitle">Lodgings & Restaurant Management</div>
+                                </div>
+                                <div class="col-5 text-end">
+                                    <div style="font-size:20px; font-weight:700;">INVOICE</div>
+                                    <table class="invoice-meta" style="margin-left:auto;">
+                                        <tr><td class="label">Invoice #:</td><td id="invBillId"></td></tr>
+                                        <tr><td class="label">Date:</td><td id="invDate"></td></tr>
+                                        <tr><td class="label">Status:</td><td id="invStatus"></td></tr>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Guest / Bill To -->
+                        <div class="row mb-3">
+                            <div class="col-6">
+                                <div style="font-size:12px; color:#999; text-transform:uppercase; letter-spacing:1px;">Bill To</div>
+                                <div style="font-weight:600; font-size:16px;" id="invGuestName"></div>
+                                <div style="font-size:13px; color:#555;" id="invGuestEmail"></div>
+                                <div style="font-size:13px; color:#555;" id="invGuestPhone"></div>
+                            </div>
+                            <div class="col-6 text-end">
+                                <div id="invServiceInfo"></div>
+                            </div>
+                        </div>
+
+                        <!-- Room Charges -->
+                        <div id="invRoomSection" style="display:none;">
+                            <div class="invoice-section-title">Room Charges</div>
+                            <table class="invoice-table">
+                                <thead>
+                                    <tr>
+                                        <th>Room</th>
+                                        <th>Type</th>
+                                        <th>Check-in</th>
+                                        <th>Check-out</th>
+                                        <th>Nights</th>
+                                        <th class="text-right">Rate/Night</th>
+                                        <th class="text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="invRoomBody"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Food & Beverage Charges -->
+                        <div id="invFoodSection" style="display:none;">
+                            <div class="invoice-section-title">Food & Beverage</div>
+                            <div id="invFoodOrders"></div>
+                        </div>
+
+                        <!-- Totals -->
+                        <div style="margin-top:20px;">
+                            <table class="invoice-summary">
+                                <tbody id="invSummaryBody"></tbody>
+                            </table>
+                        </div>
+
+                        <!-- Payment info -->
+                        <div id="invPaymentInfo" style="margin-top:15px; font-size:13px;"></div>
+
+                        <!-- Footer -->
+                        <div class="invoice-footer">
+                            <p style="margin:0;">Thank you for staying with us!</p>
+                            <p style="margin:3px 0 0 0;">This is a computer-generated invoice. No signature required.</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Generate Bill Modal -->
+    <div class="modal fade" id="generateBillModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Generate Bill</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="generateBillForm">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Select Booking</label>
+                            <select class="form-select" id="billBookingId">
+                                <option value="">-- Select --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="submit" class="btn btn-primary">Generate</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div th:replace="~{fragments :: scripts}"></div>
+    <script>
+
+        async function loadBills() {
+            const [billsRes, bookingsRes] = await Promise.all([
+                fetch('/api/bills'),
+                fetch('/api/bookings')
+            ]);
+            const bills = await billsRes.json();
+            const bookings = await bookingsRes.json();
+
+            const tbody = document.getElementById('billsTableBody');
+            tbody.innerHTML = bills.map(b => {
+                return `
+                <tr>
+                    <td>${b.billId}</td>
+                    <td>${b.guestName || '-'}</td>
+                    <td>${b.billType || '-'}</td>
+                    <td>₹${parseFloat(b.subtotal).toFixed(2)}</td>
+                    <td>₹${parseFloat(b.gstAmount).toFixed(2)}</td>
+                    <td><strong>₹${parseFloat(b.totalAmount).toFixed(2)}</strong></td>
+                    <td><span class="badge ${b.paymentStatus === 'PAID' ? 'bg-success' : 'bg-warning'}">${b.paymentStatus}</span></td>
+                    <td>${new Date(b.createdAt).toLocaleDateString()}</td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary me-1" onclick="viewBillDetail(${b.billId})">View</button>
+                        ${b.paymentStatus === 'PENDING' ? `<button class="btn btn-sm btn-primary" onclick="payBill(${b.billId})">Pay</button>` : ''}
+                    </td>
+                </tr>
+            `}).join('');
+
+            // Populate generate bill dropdown
+            const bSelect = document.getElementById('billBookingId');
+            bSelect.innerHTML = '<option value="">-- Select --</option>' + bookings
+                .filter(b => b.status === 'CHECKED_IN' || b.status === 'CHECKED_OUT')
+                .map(b => `<option value="${b.bookingId}">Room ${b.room.roomNumber} - ${b.guest.fullName} (${b.status})</option>`).join('');
+        }
+
+        async function viewBillDetail(billId) {
+            const res = await fetch(`/api/bills/${billId}`);
+            if (!res.ok) { alert('Failed to load bill detail'); return; }
+            const d = await res.json();
+
+            // Hide list, show invoice
+            document.getElementById('billsListSection').style.display = 'none';
+            document.getElementById('billDetailSection').style.display = '';
+
+            // Header meta
+            document.getElementById('invBillId').textContent = 'INV-' + String(d.billId).padStart(4, '0');
+            document.getElementById('invDate').textContent = d.createdAt ? new Date(d.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+            document.getElementById('invStatus').innerHTML = d.paymentStatus === 'PAID'
+                ? '<span class="status-paid">PAID</span>'
+                : '<span class="status-pending">UNPAID</span>';
+
+            // Guest info
+            document.getElementById('invGuestName').textContent = d.guestName;
+            document.getElementById('invGuestEmail').textContent = d.guestEmail || '';
+            document.getElementById('invGuestPhone').textContent = d.guestPhone ? 'Ph: ' + d.guestPhone : '';
+
+            // Service info (right side — shows table or room info)
+            let serviceHtml = '';
+            if (d.tableInfo) {
+                serviceHtml = `<div style="font-size:12px; color:#999; text-transform:uppercase; letter-spacing:1px;">Dine-In</div>
+                    <div style="font-weight:600;">Table ${d.tableInfo.tableNumber}</div>
+                    <div style="font-size:13px; color:#555;">Section: ${d.tableInfo.section || '-'} | Seats: ${d.tableInfo.capacity}</div>`;
+            } else if (d.roomServiceInfo) {
+                serviceHtml = `<div style="font-size:12px; color:#999; text-transform:uppercase; letter-spacing:1px;">Room Service</div>
+                    <div style="font-weight:600;">Room ${d.roomServiceInfo.roomNumber}</div>
+                    <div style="font-size:13px; color:#555;">${d.roomServiceInfo.roomType} | Guest: ${d.roomServiceInfo.guestName}</div>`;
+            } else if (d.roomCharges) {
+                serviceHtml = `<div style="font-size:12px; color:#999; text-transform:uppercase; letter-spacing:1px;">Accommodation</div>
+                    <div style="font-weight:600;">Room ${d.roomCharges.roomNumber}</div>
+                    <div style="font-size:13px; color:#555;">${d.roomCharges.roomType} | Floor ${d.roomCharges.floor}</div>`;
+            }
+            document.getElementById('invServiceInfo').innerHTML = serviceHtml;
+
+            // Room Charges table
+            const roomSection = document.getElementById('invRoomSection');
+            if (d.roomCharges) {
+                roomSection.style.display = '';
+                const rc = d.roomCharges;
+                document.getElementById('invRoomBody').innerHTML = `
+                    <tr>
+                        <td>${rc.roomNumber}</td>
+                        <td>${rc.roomType}</td>
+                        <td>${rc.checkInDate}</td>
+                        <td>${rc.checkOutDate}</td>
+                        <td>${rc.nights}</td>
+                        <td class="text-right">₹${parseFloat(rc.pricePerNight).toFixed(2)}</td>
+                        <td class="text-right">₹${parseFloat(rc.roomSubtotal).toFixed(2)}</td>
+                    </tr>`;
+            } else {
+                roomSection.style.display = 'none';
+            }
+
+            // Food orders
+            const foodSection = document.getElementById('invFoodSection');
+            const foodOrders = document.getElementById('invFoodOrders');
+            if (d.foodOrders && d.foodOrders.length > 0) {
+                foodSection.style.display = '';
+                foodOrders.innerHTML = d.foodOrders.map(order => {
+                    const itemsHtml = order.items.map((item, i) => `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${item.itemName}</td>
+                            <td>${item.quantity}</td>
+                            <td class="text-right">₹${parseFloat(item.unitPrice).toFixed(2)}</td>
+                            <td class="text-right">₹${parseFloat(item.lineTotal).toFixed(2)}</td>
+                        </tr>`).join('');
+                    return `
+                        <div style="font-size:12px; color:#888; margin-bottom:4px;">Order #${order.orderId} — ${order.orderType.replace('_',' ')} — ${new Date(order.placedAt).toLocaleString()}</div>
+                        <table class="invoice-table">
+                            <thead>
+                                <tr><th>#</th><th>Item</th><th>Qty</th><th class="text-right">Price</th><th class="text-right">Total</th></tr>
+                            </thead>
+                            <tbody>${itemsHtml}</tbody>
+                            <tfoot>
+                                <tr style="background:#f8f9fa; font-weight:600;">
+                                    <td colspan="4" class="text-right">Order Total</td>
+                                    <td class="text-right">₹${parseFloat(order.orderTotal).toFixed(2)}</td>
+                                </tr>
+                            </tfoot>
+                        </table>`;
+                }).join('');
+            } else {
+                foodSection.style.display = 'none';
+            }
+
+            // Summary totals
+            const s = d.summary;
+            let rows = '';
+            if (parseFloat(s.roomSubtotal) > 0) {
+                rows += `<tr><td>Room Charges</td><td class="text-right">₹${parseFloat(s.roomSubtotal).toFixed(2)}</td></tr>`;
+                rows += `<tr><td>GST @ 12%</td><td class="text-right">₹${parseFloat(s.roomGst).toFixed(2)}</td></tr>`;
+            }
+            if (parseFloat(s.foodSubtotal) > 0) {
+                rows += `<tr><td>F&B Charges</td><td class="text-right">₹${parseFloat(s.foodSubtotal).toFixed(2)}</td></tr>`;
+                rows += `<tr><td>GST @ 5%</td><td class="text-right">₹${parseFloat(s.foodGst).toFixed(2)}</td></tr>`;
+            }
+            if (parseFloat(s.discount) > 0) {
+                rows += `<tr><td>Discount</td><td class="text-right" style="color:#dc3545;">-₹${parseFloat(s.discount).toFixed(2)}</td></tr>`;
+            }
+            rows += `<tr class="total-row"><td>Grand Total</td><td class="text-right">₹${parseFloat(s.grandTotal).toFixed(2)}</td></tr>`;
+            document.getElementById('invSummaryBody').innerHTML = rows;
+
+            // Payment info
+            const payInfo = document.getElementById('invPaymentInfo');
+            if (d.paymentStatus === 'PAID' && d.paymentMode) {
+                payInfo.innerHTML = `<strong>Payment:</strong> ${d.paymentMode} — <span class="status-paid">Received</span>`;
+            } else {
+                payInfo.innerHTML = `<strong>Payment:</strong> <span class="status-pending">Pending</span>`;
+            }
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function closeBillDetail() {
+            document.getElementById('billDetailSection').style.display = 'none';
+            document.getElementById('billsListSection').style.display = '';
+        }
+
+        document.getElementById('generateBillForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const bookingId = document.getElementById('billBookingId').value;
+            if (!bookingId) { alert('Please select a booking'); return; }
+            const res = await fetch('/api/bills/generate', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ bookingId: parseInt(bookingId) })
+            });
+            if (res.ok) {
+                bootstrap.Modal.getInstance(document.getElementById('generateBillModal')).hide();
+                loadBills();
+            } else {
+                const err = await res.json().catch(() => ({}));
+                alert(err.message || 'Failed to generate bill');
+            }
+        });
+
+        async function payBill(id) {
+            const mode = prompt("Enter Payment Mode (CASH/CARD/UPI):", "CASH");
+            if (mode) {
+                await fetch(`/api/bills/${id}/pay`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ paymentMode: mode.toUpperCase() })
+                });
+                loadBills();
+            }
+        }
+
+        loadBills();
+    </script>
+</body>
+
+</html>

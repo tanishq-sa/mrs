@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head}"></head>
+<body class="bg-light">
+
+<div class="d-flex">
+    <div th:replace="~{fragments :: sidebar}"></div>
+    
+    <div class="flex-grow-1">
+        
+        <div class="container-fluid p-4">
+            <div class="d-flex justify-content-between mb-4">
+                <h3>Room Management</h3>
+                <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addRoomModal">Add New Room</button>
+            </div>
+
+            <div class="card shadow-sm">
+                <div class="card-body">
+                    <table class="table table-bordered table-sm">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Room #</th>
+                                <th>Type</th>
+                                <th>Floor</th>
+                                <th>Status</th>
+
+                            </tr>
+                        </thead>
+                        <tbody id="roomsTableBody">
+                            <!-- Loaded via JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Add Room Modal -->
+<div class="modal fade" id="addRoomModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Room</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="addRoomForm">
+                    <div class="mb-3">
+                        <label class="form-label">Room Number</label>
+                        <input type="text" class="form-control" id="roomNumber" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Room Type</label>
+                        <select class="form-select" id="roomTypeId" required>
+                            <option value="1">Standard</option>
+                            <option value="2">Deluxe</option>
+                            <option value="3">Suite</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Floor</label>
+                        <input type="number" class="form-control" id="floor" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Save Room</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+<script>
+
+    async function loadRooms() {
+        const res = await fetch('/api/rooms');
+        const rooms = await res.json();
+        const tbody = document.getElementById('roomsTableBody');
+        tbody.innerHTML = '';
+        rooms.forEach(room => {
+            const statusClass = room.status === 'AVAILABLE' ? 'bg-success' : 
+                              room.status === 'OCCUPIED' ? 'bg-danger' : 'bg-warning';
+            tbody.innerHTML += `
+                <tr>
+                    <td>${room.roomNumber}</td>
+                    <td>${room.roomType.typeName}</td>
+                    <td>${room.floor}</td>
+                    <td><span class="badge ${statusClass}">${room.status}</span></td>
+                </tr>
+            `;
+        });
+    }
+
+
+
+    document.getElementById('addRoomForm').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const data = {
+            roomNumber: document.getElementById('roomNumber').value,
+            roomType: { roomTypeId: document.getElementById('roomTypeId').value },
+            floor: document.getElementById('floor').value,
+            status: 'AVAILABLE'
+        };
+        await fetch('/api/rooms', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+        });
+        bootstrap.Modal.getInstance(document.getElementById('addRoomModal')).hide();
+        loadRooms();
+    });
+
+    loadRooms();
+</script>
+</body>
+</html>
