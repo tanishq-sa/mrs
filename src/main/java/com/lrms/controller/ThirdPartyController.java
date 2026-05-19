@@ -5,6 +5,9 @@ import com.lrms.entity.Order;
 import com.lrms.service.ApiUsageService;
 import com.lrms.service.LodgingService;
 import com.lrms.service.RestaurantService;
+
+import io.swagger.v3.oas.annotations.tags.Tag;
+
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -13,6 +16,7 @@ import java.util.Map;
 
 @RestController
 @RequestMapping("/api/external")
+@Tag(name = "Third Party", description = "External API Integrations")
 public class ThirdPartyController {
 
     private final LodgingService lodgingService;

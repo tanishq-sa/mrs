@@ -60,7 +60,7 @@ public class SecurityConfig {
         http.csrf(csrf -> csrf.disable())
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/api/auth/**", "/v3/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/css/**").permitAll()
-                .requestMatchers("/", "/login", "/dashboard", "/rooms", "/bookings", "/guests", "/restaurant", "/billing", "/housekeeping", "/staff", "/test").permitAll()
+                .requestMatchers("/", "/login", "/dashboard", "/rooms", "/bookings", "/guests", "/restaurant", "/billing", "/housekeeping", "/staff", "/test", "/usage-dashboard").permitAll()
                 
                 // RBAC for API
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/admin/staff").hasAnyRole("ADMIN", "MANAGER", "HOUSEKEEPING")

@@ -59,8 +59,8 @@ public class ViewController {
         return "staff";
     }
 
-    @GetMapping("/api-usage")
+    @GetMapping("/usage-dashboard")
     public String apiUsage() {
-        return "api-usage";
+        return "usage-dashboard";
     }
 }
