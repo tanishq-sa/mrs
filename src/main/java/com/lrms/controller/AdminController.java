@@ -21,15 +21,18 @@ public class AdminController {
     private final HousekeepingService housekeepingService;
     private final com.lrms.service.LodgingService lodgingService;
     private final com.lrms.service.RestaurantService restaurantService;
+    private final com.lrms.service.ApiUsageService apiUsageService;
     private final PasswordEncoder passwordEncoder;
 
     public AdminController(HousekeepingService housekeepingService, 
                            com.lrms.service.LodgingService lodgingService,
                            com.lrms.service.RestaurantService restaurantService,
+                           com.lrms.service.ApiUsageService apiUsageService,
                            PasswordEncoder passwordEncoder) {
         this.housekeepingService = housekeepingService;
         this.lodgingService = lodgingService;
         this.restaurantService = restaurantService;
+        this.apiUsageService = apiUsageService;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -40,7 +43,17 @@ public class AdminController {
         stats.put("todayBookings", lodgingService.countTodayBookings());
         stats.put("activeOrders", restaurantService.countActiveOrders());
         stats.put("pendingTasks", housekeepingService.countPendingTasks());
+        stats.put("totalApiRequests", apiUsageService.getTotalRequests());
         return stats;
+    }
+
+    @GetMapping("/external-usage")
+    public Map<String, Object> getExternalUsage() {
+        Map<String, Object> usage = new HashMap<>();
+        usage.put("recent", apiUsageService.getRecentUsage());
+        usage.put("stats", apiUsageService.getUsageStats());
+        usage.put("total", apiUsageService.getTotalRequests());
+        return usage;
     }
 
     @GetMapping("/housekeeping")

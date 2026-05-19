@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{fragments :: head}"></head>
+<body class="bg-light">
+
+<div class="d-flex">
+    <div th:replace="~{fragments :: sidebar}"></div>
+    
+    <div class="flex-grow-1">
+        <div class="container-fluid p-4">
+            <h2 class="mb-4">API Usage Dashboard</h2>
+            
+            <div class="row mb-4">
+                <div class="col-md-4">
+                    <div class="card text-center shadow-sm">
+                        <div class="card-body">
+                            <h5 class="card-title text-muted">Total External Requests</h5>
+                            <h2 class="display-4" id="totalRequests">0</h2>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white">
+                            <h5 class="mb-0">Requests per Partner</h5>
+                        </div>
+                        <div class="card-body">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Partner</th>
+                                        <th>Requests</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="partnerStatsBody">
+                                    <!-- Stats will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-12">
+                    <div class="card shadow-sm">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">Recent API Activity</h5>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadUsage()">Refresh</button>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover table-sm">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>Partner</th>
+                                            <th>Endpoint</th>
+                                            <th>Method</th>
+                                            <th>Status</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="usageTableBody">
+                                        <!-- Usage logs will be loaded here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments :: scripts}"></div>
+<script>
+    async function loadUsage() {
+        try {
+            const res = await fetch('/api/admin/external-usage');
+            if (res.ok) {
+                const data = await res.json();
+                
+                document.getElementById('totalRequests').textContent = data.total;
+
+                // Load Stats
+                const statsBody = document.getElementById('partnerStatsBody');
+                statsBody.innerHTML = '';
+                for (const [partner, count] of Object.entries(data.stats)) {
+                    const row = `<tr><td>${partner}</td><td>${count}</td></tr>`;
+                    statsBody.innerHTML += row;
+                }
+
+                // Load Recent Logs
+                const tableBody = document.getElementById('usageTableBody');
+                tableBody.innerHTML = '';
+                data.recent.forEach(log => {
+                    const statusBadge = log.status === 'SUCCESS' ? 'bg-success' : 'bg-danger';
+                    const time = new Date(log.timestamp).toLocaleString();
+                    const row = `
+                        <tr>
+                            <td>${time}</td>
+                            <td>${log.partnerName}</td>
+                            <td><code>${log.endpoint}</code></td>
+                            <td><span class="badge bg-secondary">${log.method}</span></td>
+                            <td><span class="badge ${statusBadge}">${log.status}</span></td>
+                        </tr>
+                    `;
+                    tableBody.innerHTML += row;
+                });
+            }
+        } catch (err) {
+            console.error('Failed to load usage data');
+        }
+    }
+
+    loadUsage();
+    // Auto refresh every 10 seconds
+    setInterval(loadUsage, 10000);
+</script>
+</body>
+</html>

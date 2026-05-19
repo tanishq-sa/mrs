@@ -80,6 +80,9 @@ public class SecurityConfig {
                 .requestMatchers("/api/menu/**", "/api/tables/**", "/api/orders/**").hasAnyRole("ADMIN", "MANAGER", "RESTAURANT_STAFF")
                 .requestMatchers("/api/bills/**").hasAnyRole("ADMIN", "MANAGER", "FRONT_DESK", "RESTAURANT_STAFF")
                 
+                // External Integration API
+                .requestMatchers("/api/external/**").hasAnyRole("ADMIN", "MANAGER", "PARTNER")
+                
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))

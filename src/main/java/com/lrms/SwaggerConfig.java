@@ -72,4 +72,12 @@ public class SwaggerConfig {
                 .pathsToMatch("/api/admin/**", "/api/auth/**")
                 .build();
     }
+
+    @Bean
+    public GroupedOpenApi externalApi() {
+        return GroupedOpenApi.builder()
+                .group("5-External Integration")
+                .pathsToMatch("/api/external/**")
+                .build();
+    }
 }
