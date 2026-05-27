@@ -65,7 +65,7 @@ public class SecurityConfig {
                 // RBAC for API
                 .requestMatchers(org.springframework.http.HttpMethod.GET, "/api/admin/staff").hasAnyRole("ADMIN", "MANAGER", "HOUSEKEEPING")
                 .requestMatchers("/api/admin/staff/**").hasRole("ADMIN")
-                .requestMatchers("/api/admin/stats").authenticated()
+                .requestMatchers("/api/admin/stats", "/api/admin/analysis", "/api/admin/ai/**").authenticated()
                 .requestMatchers("/api/admin/housekeeping/**").hasAnyRole("ADMIN", "MANAGER", "HOUSEKEEPING")
                 
                 // Cross-role read access (GET only) — placed before broad rules

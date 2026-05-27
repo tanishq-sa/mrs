@@ -288,5 +288,52 @@ public class BillingService {
         bill.setPaymentStatus("PAID");
         billRepository.save(bill);
     }
+
+    public Map<String, Object> getRevenueAnalysis() {
+        List<Bill> bills = billRepository.findAll();
+        BigDecimal totalRoomRevenue = BigDecimal.ZERO;
+        BigDecimal totalFoodRevenue = BigDecimal.ZERO;
+        BigDecimal totalGst = BigDecimal.ZERO;
+        BigDecimal totalAmountPaid = BigDecimal.ZERO;
+        BigDecimal totalAmountPending = BigDecimal.ZERO;
+
+        for (Bill bill : bills) {
+            BigDecimal subtotal = bill.getSubtotal() != null ? bill.getSubtotal() : BigDecimal.ZERO;
+            BigDecimal gst = bill.getGstAmount() != null ? bill.getGstAmount() : BigDecimal.ZERO;
+            BigDecimal total = bill.getTotalAmount() != null ? bill.getTotalAmount() : BigDecimal.ZERO;
+
+            if ("PAID".equals(bill.getPaymentStatus())) {
+                totalAmountPaid = totalAmountPaid.add(total);
+            } else {
+                totalAmountPending = totalAmountPending.add(total);
+            }
+            totalGst = totalGst.add(gst);
+
+            if (bill.getBooking() != null) {
+                Booking booking = bill.getBooking();
+                long days = booking.getCheckInDate().until(booking.getCheckOutDate()).getDays();
+                if (days <= 0) days = 1;
+                BigDecimal basePrice = booking.getRoom().getRoomType().getBasePrice();
+                BigDecimal roomSub = basePrice.multiply(new BigDecimal(days));
+
+                totalRoomRevenue = totalRoomRevenue.add(roomSub);
+
+                BigDecimal fbSub = subtotal.subtract(roomSub);
+                if (fbSub.compareTo(BigDecimal.ZERO) > 0) {
+                    totalFoodRevenue = totalFoodRevenue.add(fbSub);
+                }
+            } else if (bill.getOrder() != null) {
+                totalFoodRevenue = totalFoodRevenue.add(subtotal);
+            }
+        }
+
+        Map<String, Object> revenueMap = new HashMap<>();
+        revenueMap.put("totalRoomRevenue", totalRoomRevenue);
+        revenueMap.put("totalFoodRevenue", totalFoodRevenue);
+        revenueMap.put("totalGst", totalGst);
+        revenueMap.put("totalAmountPaid", totalAmountPaid);
+        revenueMap.put("totalAmountPending", totalAmountPending);
+        return revenueMap;
+    }
 }
 

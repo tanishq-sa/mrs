@@ -1,54 +1,239 @@
 <!DOCTYPE html>
 <html xmlns:th="http://www.thymeleaf.org">
-<head th:replace="~{fragments :: head}"></head>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        .sidebar { min-height: 100vh; width: 250px; }
+        .chart-container { position: relative; height: 220px; width: 100%; }
+        .ai-content { white-space: pre-line; max-height: 400px; overflow-y: auto; background-color: #f8f9fa; font-family: monospace; font-size: 0.9rem; }
+    </style>
+</head>
 <body class="bg-light">
 
 <div class="d-flex">
     <div th:replace="~{fragments :: sidebar}"></div>
     
     <div class="flex-grow-1">
-        
         <div class="container-fluid p-4">
-            <div class="row">
-                <div class="col-md-3 mb-4">
+            
+            <!-- Summary Stats Cards Row -->
+            <div class="row mb-4">
+                <div class="col-md-3 mb-2">
                     <div class="card text-center shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title text-muted">Available Rooms</h5>
-                            <h2 class="display-4" id="statRooms">-</h2>
+                            <h2 class="display-6" id="statRooms">-</h2>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-4">
+                <div class="col-md-3 mb-2">
                     <div class="card text-center shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title text-muted">Today's Bookings</h5>
-                            <h2 class="display-4" id="statBookings">-</h2>
+                            <h2 class="display-6" id="statBookings">-</h2>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-4">
+                <div class="col-md-3 mb-2">
                     <div class="card text-center shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title text-muted">Active Orders</h5>
-                            <h2 class="display-4" id="statOrders">-</h2>
+                            <h2 class="display-6" id="statOrders">-</h2>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-3 mb-4">
+                <div class="col-md-3 mb-2">
                     <div class="card text-center shadow-sm">
                         <div class="card-body">
                             <h5 class="card-title text-muted">Pending Tasks</h5>
-                            <h2 class="display-4" id="statTasks">-</h2>
+                            <h2 class="display-6" id="statTasks">-</h2>
                         </div>
                     </div>
                 </div>
             </div>
+
+            <!-- Analysis Charts Section -->
+            <h4 class="mb-3 text-secondary border-bottom pb-2">Business Data Analysis</h4>
+            
+            <div class="row mb-4">
+                <!-- Room Occupancy & Housekeeping -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white">
+                            <strong class="text-secondary">Rooms Status & Housekeeping</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 text-center">
+                                    <small class="text-muted d-block mb-1">Room Statuses</small>
+                                    <div class="chart-container">
+                                        <canvas id="roomStatusChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 text-center">
+                                    <small class="text-muted d-block mb-1">Housekeeping Tasks</small>
+                                    <div class="chart-container">
+                                        <canvas id="housekeepingChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Financial Performance -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white">
+                            <strong class="text-secondary">Revenue & Invoicing</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6 text-center">
+                                    <small class="text-muted d-block mb-1">Revenue Sources (INR)</small>
+                                    <div class="chart-container">
+                                        <canvas id="revenueSplitChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="col-md-6 text-center">
+                                    <small class="text-muted d-block mb-1">Invoices Status (INR)</small>
+                                    <div class="chart-container">
+                                        <canvas id="paymentStatusChart"></canvas>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row mb-4">
+                <!-- Food & Beverage Analysis -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white">
+                            <strong class="text-secondary">Top Menu Items ordered</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="chart-container" style="height: 250px;">
+                                <canvas id="topMenuItemsChart"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Guest Ratios -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white">
+                            <strong class="text-secondary">Guest Profiles (VIP vs Regular)</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row align-items-center h-100">
+                                <div class="col-md-6 text-center">
+                                    <div class="chart-container" style="height: 180px;">
+                                        <canvas id="guestVipChart"></canvas>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <table class="table table-sm table-bordered">
+                                        <tbody>
+                                            <tr>
+                                                <td>Total Guests</td>
+                                                <td id="tableTotalGuests" class="fw-bold text-end">-</td>
+                                            </tr>
+                                            <tr>
+                                                <td>VIP Guests</td>
+                                                <td id="tableVipGuests" class="text-warning fw-bold text-end">-</td>
+                                            </tr>
+                                            <tr>
+                                                <td>Regular Guests</td>
+                                                <td id="tableRegularGuests" class="text-info fw-bold text-end">-</td>
+                                            </tr>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- AI LLM Features Section (Groq API) -->
+            <h4 class="mb-3 text-secondary border-bottom pb-2">🤖 AI Operations Companion</h4>
+            
+            <div class="row">
+                <!-- AI Operations Advisor -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                            <strong class="text-secondary">AI Analytics Advisor</strong>
+                            <button id="btnAiInsights" class="btn btn-sm btn-outline-primary" onclick="generateAiInsights()">
+                                Generate Insights
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <div id="aiInsightsContent" class="ai-content p-3 border rounded text-secondary">
+                                Click "Generate Insights" to run an AI analysis on the current database values.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- AI Guest Assistant -->
+                <div class="col-md-6 mb-4">
+                    <div class="card shadow-sm h-100">
+                        <div class="card-header bg-white">
+                            <strong class="text-secondary">AI Guest Preparation & Menu Assistant</strong>
+                        </div>
+                        <div class="card-body">
+                            <div class="row mb-3">
+                                <div class="col-md-8">
+                                    <select id="selectBooking" class="form-select form-select-sm">
+                                        <option value="">-- Select Active Booking --</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4">
+                                    <button id="btnGuestAssist" class="btn btn-sm btn-outline-success w-100" onclick="generateGuestAssist()">
+                                        Analyze Guest
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="aiGuestAssistContent" class="ai-content p-3 border rounded text-secondary">
+                                Select an active booking from the list above and click "Analyze Guest" to generate welcome messages, housekeeping task checklists, and customized menu recommendations from the database.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
         </div>
     </div>
 </div>
 
 <div th:replace="~{fragments :: scripts}"></div>
+<!-- Load Chart.js from CDN -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
 <script>
+    // Keep trackers of charts to prevent canvas re-drawing conflicts
+    let charts = {};
+
+    function cleanMarkdown(text) {
+        if (!text) return "";
+        let formatted = text;
+        // Parse simple markdown headers
+        formatted = formatted.replace(/^### (.*$)/gim, '<h6 class="mt-3 text-dark fw-bold">$1</h6>');
+        formatted = formatted.replace(/^## (.*$)/gim, '<h6 class="mt-3 text-dark fw-bold">$1</h6>');
+        formatted = formatted.replace(/^# (.*$)/gim, '<h5 class="mt-3 text-dark fw-bold">$1</h5>');
+        // Parse bold tags
+        formatted = formatted.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+        // Parse bullet lists
+        formatted = formatted.replace(/^\- (.*$)/gim, '• $1');
+        return formatted;
+    }
 
     async function loadStats() {
         try {
@@ -61,13 +246,267 @@
                 document.getElementById('statTasks').textContent = stats.pendingTasks;
             }
         } catch (err) {
-            console.error('Failed to load stats');
+            console.error('Failed to load summary stats', err);
         }
     }
 
+    async function loadAnalysis() {
+        try {
+            const res = await fetch('/api/admin/analysis');
+            if (res.ok) {
+                const data = await res.json();
+                
+                // Update table values for Guests
+                const totalG = data.vipCount + data.regularCount;
+                document.getElementById('tableTotalGuests').textContent = totalG;
+                document.getElementById('tableVipGuests').textContent = data.vipCount;
+                document.getElementById('tableRegularGuests').textContent = data.regularCount;
+
+                // Render Room Status Chart
+                renderRoomStatusChart(data.roomStatus);
+
+                // Render Housekeeping Tasks Chart
+                renderHousekeepingChart(data.housekeepingStats);
+
+                // Render Revenue Split Chart
+                renderRevenueSplitChart(data.revenue);
+
+                // Render Payment Status Chart
+                renderPaymentStatusChart(data.revenue);
+
+                // Render Top Menu Items Chart
+                renderTopMenuItemsChart(data.topMenuItems);
+
+                // Render Guest VIP Doughnut
+                renderGuestVipChart(data.vipCount, data.regularCount);
+            }
+        } catch (err) {
+            console.error('Failed to load analysis analytics', err);
+        }
+    }
+
+    async function loadActiveBookings() {
+        try {
+            const res = await fetch('/api/bookings');
+            if (res.ok) {
+                const bookings = await res.json();
+                const select = document.getElementById('selectBooking');
+                select.innerHTML = '<option value="">-- Select Active Booking --</option>';
+                
+                // Show bookings that are active or confirmed
+                bookings.forEach(b => {
+                    const option = document.createElement('option');
+                    option.value = b.bookingId;
+                    option.textContent = `Room ${b.room ? b.room.roomNumber : '?'} - ${b.guest ? b.guest.fullName : 'Guest'} [${b.status}]`;
+                    select.appendChild(option);
+                });
+            }
+        } catch (err) {
+            console.error('Failed to load bookings for dropdown', err);
+        }
+    }
+
+    // Chart Render Functions
+    function renderRoomStatusChart(status) {
+        if (charts.room) charts.room.destroy();
+        const ctx = document.getElementById('roomStatusChart').getContext('2d');
+        charts.room = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Available', 'Occupied', 'Cleaning', 'Maintenance'],
+                datasets: [{
+                    data: [status.AVAILABLE || 0, status.OCCUPIED || 0, status.CLEANING || 0, status.MAINTENANCE || 0],
+                    backgroundColor: ['#198754', '#dc3545', '#ffc107', '#6c757d'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function renderHousekeepingChart(stats) {
+        if (charts.housekeeping) charts.housekeeping.destroy();
+        const ctx = document.getElementById('housekeepingChart').getContext('2d');
+        charts.housekeeping = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Pending', 'In Progress', 'Completed', 'Approved'],
+                datasets: [{
+                    data: [stats.PENDING || 0, stats.IN_PROGRESS || 0, stats.COMPLETED || 0, stats.APPROVED || 0],
+                    backgroundColor: ['#dc3545', '#0dcaf0', '#198754', '#0d6efd'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+
+    function renderRevenueSplitChart(rev) {
+        if (charts.revenueSplit) charts.revenueSplit.destroy();
+        const ctx = document.getElementById('revenueSplitChart').getContext('2d');
+        charts.revenueSplit = new Chart(ctx, {
+            type: 'pie',
+            data: {
+                labels: ['Rooms', 'Food & F&B'],
+                datasets: [{
+                    data: [rev.totalRoomRevenue || 0, rev.totalFoodRevenue || 0],
+                    backgroundColor: ['#0d6efd', '#fd7e14'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function renderPaymentStatusChart(rev) {
+        if (charts.paymentStatus) charts.paymentStatus.destroy();
+        const ctx = document.getElementById('paymentStatusChart').getContext('2d');
+        charts.paymentStatus = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Paid', 'Pending'],
+                datasets: [{
+                    data: [rev.totalAmountPaid || 0, rev.totalAmountPending || 0],
+                    backgroundColor: ['#198754', '#dc3545'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    function renderTopMenuItemsChart(items) {
+        if (charts.topMenu) charts.topMenu.destroy();
+        const ctx = document.getElementById('topMenuItemsChart').getContext('2d');
+        
+        const labels = items.map(i => i.itemName);
+        const data = items.map(i => i.quantity);
+
+        charts.topMenu = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels.length > 0 ? labels : ['None'],
+                datasets: [{
+                    label: 'Quantity Ordered',
+                    data: data.length > 0 ? data : [0],
+                    backgroundColor: '#6f42c1',
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: { x: { beginAtZero: true, ticks: { precision: 0 } } }
+            }
+        });
+    }
+
+    function renderGuestVipChart(vip, regular) {
+        if (charts.guestVip) charts.guestVip.destroy();
+        const ctx = document.getElementById('guestVipChart').getContext('2d');
+        charts.guestVip = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['VIP', 'Regular'],
+                datasets: [{
+                    data: [vip, regular],
+                    backgroundColor: ['#ffc107', '#0dcaf0'],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } }
+            }
+        });
+    }
+
+    // AI Insight Generator Calls
+    async function generateAiInsights() {
+        const btn = document.getElementById('btnAiInsights');
+        const container = document.getElementById('aiInsightsContent');
+        
+        btn.disabled = true;
+        btn.textContent = "Processing...";
+        container.innerHTML = "Gathering stats and querying LLM, please wait...";
+
+        try {
+            const res = await fetch('/api/admin/ai/insights');
+            if (res.ok) {
+                const data = await res.json();
+                container.innerHTML = cleanMarkdown(data.analysis);
+            } else {
+                container.innerHTML = "Failed to fetch AI insights. HTTP status " + res.status;
+            }
+        } catch (err) {
+            container.innerHTML = "Error occurred: " + err.message;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Generate Insights";
+        }
+    }
+
+    async function generateGuestAssist() {
+        const select = document.getElementById('selectBooking');
+        const bookingId = select.value;
+        const btn = document.getElementById('btnGuestAssist');
+        const container = document.getElementById('aiGuestAssistContent');
+
+        if (!bookingId) {
+            alert("Please select an active booking first.");
+            return;
+        }
+
+        btn.disabled = true;
+        btn.textContent = "Processing...";
+        container.innerHTML = "Fetching guest details, menu items and preparing plan...";
+
+        try {
+            const res = await fetch(`/api/admin/ai/guest-assist/${bookingId}`);
+            if (res.ok) {
+                const data = await res.json();
+                container.innerHTML = cleanMarkdown(data.analysis);
+            } else {
+                container.innerHTML = "Failed to run guest assist. HTTP status " + res.status;
+            }
+        } catch (err) {
+            container.innerHTML = "Error occurred: " + err.message;
+        } finally {
+            btn.disabled = false;
+            btn.textContent = "Analyze Guest";
+        }
+    }
+
+    // Page Load Setup
     loadStats();
-    // Refresh stats every 30 seconds
-    setInterval(loadStats, 30000);
+    loadAnalysis();
+    loadActiveBookings();
+
+    // Auto-refresh metrics every 30 seconds
+    setInterval(() => {
+        loadStats();
+        loadAnalysis();
+    }, 30000);
 </script>
 </body>
 </html>

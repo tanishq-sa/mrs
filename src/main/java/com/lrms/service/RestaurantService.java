@@ -9,6 +9,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
+import java.util.HashMap;
+import java.util.ArrayList;
 
 @Service
 @Transactional
@@ -146,5 +149,21 @@ public class RestaurantService {
         return orderRepository.findAll().stream()
                 .filter(o -> !"SERVED".equals(o.getStatus()) && !"CANCELLED".equals(o.getStatus()))
                 .count();
+    }
+
+    public List<Map<String, Object>> getTopSellingMenuItems() {
+        List<Object[]> raw = orderItemRepository.findTopSellingItems();
+        List<Map<String, Object>> list = new ArrayList<>();
+        // Cap to top 10 items
+        int count = 0;
+        for (Object[] row : raw) {
+            if (count >= 10) break;
+            Map<String, Object> item = new HashMap<>();
+            item.put("itemName", row[0]);
+            item.put("quantity", row[1]);
+            list.add(item);
+            count++;
+        }
+        return list;
     }
 }

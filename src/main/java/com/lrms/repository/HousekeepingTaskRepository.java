@@ -6,4 +6,5 @@ import java.util.List;
 
 public interface HousekeepingTaskRepository extends JpaRepository<HousekeepingTask, Long> {
     List<HousekeepingTask> findByStatus(String status);
+    long countByStatus(String status);
 }
